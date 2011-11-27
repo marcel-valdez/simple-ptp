@@ -10,14 +10,15 @@ import java.nio.ByteBuffer;
  *
  * @author Marcel
  */
-public final class UInt32 extends DataValue {
-    public static final UInt32 Zero = new UInt32(new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
+public final class UInt32 extends DataValue<Long> {
+    public static final UInt32 Zero = new UInt32(new byte[] { 0, 0, 0, 0 });
     
-    public UInt32(byte[] data) {
-        super(ByteBuffer.wrap(data, 0, 4).array(), 32);
+    public UInt32(byte... data) {
+        super(new byte[] { data[0], data[1], data[2], data[3] }, 32);
     }
     
-    public long getValue() {
+    @Override
+    public Long getValue() {
         return this.ToUValue(4);
     }
 }

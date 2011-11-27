@@ -10,6 +10,6 @@ import data.*;
  * @author Marcel
  */
 public final class TimeRepresentation extends DataStruct{
-	public UInt32 seconds;
-	public Int32 nanoseconds;
+	public UInt32 seconds = UInt32.Zero;
+	public Int32 nanoseconds = Int32.Zero;
 }

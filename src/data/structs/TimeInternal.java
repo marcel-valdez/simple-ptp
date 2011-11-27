@@ -8,7 +8,7 @@ import data.*;
  *
  * @author Marcel
  */
-public class TimeInterval extends DataStruct{
-    Int32 seconds;
-    Int32 nanoseconds;
+public final class TimeInternal extends DataStruct{
+    Int32 seconds = Int32.Zero;
+    Int32 nanoseconds = Int32.Zero;
 }

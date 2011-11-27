@@ -10,14 +10,15 @@ import java.nio.ByteBuffer;
  *
  * @author Marcel
  */
-public final class Int32 extends DataValue {
+public final class Int32 extends DataValue<java.lang.Integer>{
     public static final Int32 Zero = new Int32(new byte[] { 0, 0, 0, 0 });
     
-    public Int32(byte[] data) {
-        super(ByteBuffer.wrap(data, 0, 4).array(), 32);
+    public Int32(byte... data) {
+        super(new byte[] { data[0], data[1], data[2], data[3] }, 32);
     }
     
-    public int getValue() {
+    @Override
+    public Integer getValue() {
         return (int)this.ToValue(4);
     }
 }

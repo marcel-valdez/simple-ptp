@@ -8,8 +8,8 @@ import data.*;
  *
  * @author Marcel
  */
-public class IntervalTimer extends DataStruct {
+public final class IntervalTimer extends DataStruct {
     Int32 interval = Int32.Zero;
     Int32 left = Int32.Zero;
-    data.Boolean expire = data.Boolean.False;
+    Bool expire = Bool.False;
 }

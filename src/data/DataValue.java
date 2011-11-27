@@ -8,7 +8,7 @@ package data;
  *
  * @author Marcel
  */
-public class DataValue {
+public abstract class DataValue<T> {
     // Se deben guardar los datos así: 
     // si viene un número: 1011 1100 0011 1011
     // Se debe guardar:
@@ -52,4 +52,6 @@ public class DataValue {
         System.arraycopy(this.dataValue, 0, copy, 0, copy.length);
         return copy;
     }
+    
+    public abstract T getValue();
 }

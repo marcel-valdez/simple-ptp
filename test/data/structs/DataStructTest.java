@@ -4,7 +4,12 @@
  */
 package data.structs;
 
+import data.DataValue;
+import java.lang.reflect.Field;
 import data.Int32;
+import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
+import junit.framework.Assert;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -17,7 +22,7 @@ import static org.junit.Assert.*;
  * @author Marcel
  */
 public class DataStructTest {
-    
+
     public DataStructTest() {
     }
 
@@ -28,11 +33,11 @@ public class DataStructTest {
     @AfterClass
     public static void tearDownClass() throws Exception {
     }
-    
+
     @Before
     public void setUp() {
     }
-    
+
     @After
     public void tearDown() {
     }
@@ -44,13 +49,48 @@ public class DataStructTest {
     public void testSerialize() {
         System.out.println("serialize");
         IntervalTimer timer = new IntervalTimer();
-        timer.expire = new data.Boolean(new byte[] { 1 });
-        timer.interval = new Int32(new byte[] { 0, 0, 0, 64 });
-        timer.left = new Int32(new byte[] { 0, 0, 0, 32 });
-        
-        DataStruct instance = timer;
-        
-        byte[] expResult = new byte[] { 0, 0, 0, 64, 0, 0, 0, 32, 1 };
+        timer.expire = new data.Bool(new byte[]{1});
+        timer.interval = new Int32(new byte[]{0, 0, 0, 64});
+        timer.left = new Int32(new byte[]{0, 0, 0, 32});
+        byte[] expResult = new byte[]{0, 0, 0, 64, 0, 0, 0, 32, 1};
+        testSerializeHelper(timer, expResult);
+    }
+
+    protected void testLoadHelper(DataStruct instance, byte[] data, DataStruct expected)
+            throws InstantiationException, IllegalAccessException, IllegalArgumentException, SecurityException, NoSuchMethodException, InvocationTargetException {
+        instance.load(data);
+        AssertStructsAreEqual(instance, expected);
+    }
+
+    protected void AssertStructsAreEqual(DataStruct actual, DataStruct expected) throws IllegalArgumentException, IllegalAccessException, SecurityException {
+        Field[] fields = actual.getClass().getDeclaredFields();
+        for (Field field : fields) {
+            if (field.getType().isArray()) {
+                Object actualArray = field.get(actual);
+                Object expectedArray = field.get(expected);
+                int length = Array.getLength(actualArray);
+                for (int i = 0; i < length; i++) {
+                    DataValue actualValue = (DataValue) Array.get(actualArray, i);
+                    DataValue expectedValue = (DataValue) Array.get(expectedArray, i);
+
+                    System.out.println("  expected: " + expectedValue.getValue());
+                    System.out.println("  result: " + actualValue.getValue());
+                    System.out.println("");
+                    assertEquals(expectedValue.getValue(), actualValue.getValue());
+                }
+            } else {
+                DataValue actualValue = (DataValue) field.get(actual);
+                DataValue expectedValue = (DataValue) field.get(expected);
+                System.out.println("  expected: " + expectedValue.getValue());
+                System.out.println("  result: " + actualValue.getValue());
+                System.out.println("");
+                assertEquals(expectedValue.getValue(), actualValue.getValue());
+            }
+        }
+    }
+
+    protected void testSerializeHelper(DataStruct struct, byte[] expResult) {
+        DataStruct instance = struct;
         byte[] result = instance.serialize();
         assertArrayEquals(expResult, result);
     }
@@ -61,17 +101,12 @@ public class DataStructTest {
     @Test
     public void testLoad() throws Exception {
         System.out.println("load");
-        byte[] data = new byte[] { 0, 0, 0, 64, 0, 0, 0, 32, 1 };
+        byte[] data = new byte[]{0, 0, 0, 64, 0, 0, 0, 32, 1};
         IntervalTimer instance = new IntervalTimer();
         IntervalTimer expected = new IntervalTimer();
-        expected.expire = new data.Boolean(new byte[] { 1 });
-        expected.interval = new Int32(new byte[] { 0, 0, 0, 64 });
-        expected.left = new Int32(new byte[] { 0, 0, 0, 32 });
-        instance.load(data);
-        
-        assertEquals(expected.expire.getValue(), instance.expire.getValue());
-        assertEquals(expected.interval.getValue(), instance.interval.getValue());
-        assertEquals(expected.left.getValue(), instance.left.getValue());
-        
+        expected.expire = new data.Bool(new byte[]{1});
+        expected.interval = new Int32(new byte[]{0, 0, 0, 64});
+        expected.left = new Int32(new byte[]{0, 0, 0, 32});
+        testLoadHelper(instance, data, expected);
     }
 }
