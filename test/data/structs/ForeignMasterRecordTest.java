@@ -4,6 +4,9 @@
  */
 package data.structs;
 
+import data.Octet;
+import data.UInt16;
+import data.UInt8;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -37,8 +40,18 @@ public class ForeignMasterRecordTest {
     }
 
     @Test
-    public void testSomeMethod() {
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+    public void testSerializeDeserialize() {
+        ForeignMasterRecord expected = new ForeignMasterRecord();
+        expected.foreign_master_communication_technology = new UInt8((byte)0);
+        expected.foreign_master_port_id = new UInt16((byte)1, (byte)2);
+        expected.foreign_master_syncs = new UInt16((byte)3, (byte)4);
+        expected.foreign_master_uuid[0] = new Octet((byte)5);
+        expected.foreign_master_uuid[1] = new Octet((byte)6);
+        expected.foreign_master_uuid[2] = new Octet((byte)7);
+        expected.foreign_master_uuid[3] = new Octet((byte)8);
+        expected.foreign_master_uuid[4] = new Octet((byte)9);
+        expected.foreign_master_uuid[5] = new Octet((byte)10);
+        expected.header = new MsgHeader();
+                
     }
 }
