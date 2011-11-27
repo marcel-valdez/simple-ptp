@@ -41,13 +41,13 @@ public class DataStruct {
                             System.arraycopy(serialized, 0, data, i * (typeLength / 8), serialized.length);
                         }
                     } else {
-                        DataValue value = (DataValue) field.get(this);
+                        DataValue value = (DataValue) fieldValue;
                         data = value.serialize();
                     }
-
-                    System.arraycopy(data, 0, buffer, length, data.length);
-                    length += data.length;
                 }
+                
+                System.arraycopy(data, 0, buffer, length, data.length);
+                length += data.length;
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(DataStruct.class.getName()).log(Level.WARNING, "Expected all fields to be DataValue", ex);
             } catch (IllegalAccessException ex) {
@@ -68,10 +68,10 @@ public class DataStruct {
         for (Field field : fields) {
             try {
                 if (DataStruct.class.isAssignableFrom(field.getType())) {
-                    DataStruct objectValue = (DataStruct)field.get(this);
+                    DataStruct objectValue = (DataStruct) field.get(this);
                     int structLength = objectValue.serialize().length;
                     byte[] bufferData = new byte[structLength];
-                    buffer.get(bufferData, 0 , structLength);
+                    buffer.get(bufferData, 0, structLength);
                     objectValue.load(bufferData);
                 } else {
                     if (field.getType().isArray()) {

@@ -65,7 +65,11 @@ public class DataStructTest {
     protected void AssertStructsAreEqual(DataStruct actual, DataStruct expected) throws IllegalArgumentException, IllegalAccessException, SecurityException {
         Field[] fields = actual.getClass().getDeclaredFields();
         for (Field field : fields) {
-            if (field.getType().isArray()) {
+            if (DataStruct.class.isAssignableFrom(field.getType())) {
+                DataStruct actualField = (DataStruct)field.get(actual);
+                DataStruct expectedField = (DataStruct)field.get(expected);
+                AssertStructsAreEqual(actualField, expectedField);
+            } else if (field.getType().isArray()) {
                 Object actualArray = field.get(actual);
                 Object expectedArray = field.get(expected);
                 int length = Array.getLength(actualArray);
