@@ -4,7 +4,7 @@
  */
 package data.structs;
 
-import data.DataValue;
+import data.types.DataValue;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;

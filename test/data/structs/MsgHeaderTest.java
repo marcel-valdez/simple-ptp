@@ -4,9 +4,9 @@
  */
 package data.structs;
 
-import data.UInt16;
-import data.Octet;
-import data.UInt8;
+import data.types.UInt16;
+import data.types.Octet;
+import data.types.UInt8;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;

@@ -4,10 +4,10 @@
  */
 package data.structs;
 
-import data.Bool;
-import data.Octet;
-import data.UInt16;
-import data.UInt8;
+import data.types.Bool;
+import data.types.Octet;
+import data.types.UInt16;
+import data.types.UInt8;
 import data.constants.Constants;
 
 /**

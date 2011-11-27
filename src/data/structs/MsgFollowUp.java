@@ -4,7 +4,7 @@
  */
 package data.structs;
 
-import data.UInt16;
+import data.types.UInt16;
 
 /**
  *

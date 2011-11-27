@@ -4,6 +4,12 @@
  */
 package data;
 
+import data.types.Int16;
+import data.types.Int32;
+import data.types.UInt8;
+import data.types.DataValue;
+import data.types.Octet;
+import data.types.UInt16;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

@@ -4,7 +4,7 @@
  */
 package data.structs;
 
-import data.*;
+import data.types.*;
 import data.constants.Constants;
 
 /**

@@ -4,9 +4,9 @@
  */
 package data.structs;
 
-import data.DataValue;
+import data.types.DataValue;
 import java.lang.reflect.Field;
-import data.Int32;
+import data.types.Int32;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import junit.framework.Assert;
@@ -49,7 +49,7 @@ public class DataStructTest {
     public void testSerialize() {
         System.out.println("serialize");
         IntervalTimer timer = new IntervalTimer();
-        timer.expire = new data.Bool(new byte[]{1});
+        timer.expire = new data.types.Bool(new byte[]{1});
         timer.interval = new Int32(new byte[]{0, 0, 0, 64});
         timer.left = new Int32(new byte[]{0, 0, 0, 32});
         byte[] expResult = new byte[]{0, 0, 0, 64, 0, 0, 0, 32, 1};
@@ -108,7 +108,7 @@ public class DataStructTest {
         byte[] data = new byte[]{0, 0, 0, 64, 0, 0, 0, 32, 1};
         IntervalTimer instance = new IntervalTimer();
         IntervalTimer expected = new IntervalTimer();
-        expected.expire = new data.Bool(new byte[]{1});
+        expected.expire = new data.types.Bool(new byte[]{1});
         expected.interval = new Int32(new byte[]{0, 0, 0, 64});
         expected.left = new Int32(new byte[]{0, 0, 0, 32});
         testLoadHelper(instance, data, expected);
