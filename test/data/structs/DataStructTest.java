@@ -4,12 +4,12 @@
  */
 package data.structs;
 
+import java.lang.reflect.Modifier;
 import data.types.DataValue;
 import java.lang.reflect.Field;
 import data.types.Int32;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
-import junit.framework.Assert;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -65,6 +65,10 @@ public class DataStructTest {
     protected void AssertStructsAreEqual(DataStruct actual, DataStruct expected) throws IllegalArgumentException, IllegalAccessException, SecurityException {
         Field[] fields = actual.getClass().getDeclaredFields();
         for (Field field : fields) {
+            if (Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            
             if (DataStruct.class.isAssignableFrom(field.getType())) {
                 DataStruct actualField = (DataStruct)field.get(actual);
                 DataStruct expectedField = (DataStruct)field.get(expected);

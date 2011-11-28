@@ -14,7 +14,7 @@ import data.constants.Constants;
  * @author Marcel
  */
 public final class ClockIdentity extends DataStruct {
-
+    public static final ClockIdentity Empty = new ClockIdentity();
     UInt8 clockCommunicationTechnology = UInt8.Zero;
     Octet[] clockUuidField = Octet.Array(Constants.PTP_UUID_LENGTH);
     UInt16 clockPortField = UInt16.Zero;

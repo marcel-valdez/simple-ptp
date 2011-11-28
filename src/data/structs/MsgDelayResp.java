@@ -15,6 +15,7 @@ import data.constants.Constants;
  */
 public final class MsgDelayResp extends DataStruct {
 
+    public static final MsgDelayResp Empty = new MsgDelayResp();
     TimeRepresentation delayReceiptTimestamp = new TimeRepresentation();
     UInt8 requestingSourceCommunicationTechnology = UInt8.Zero;
     Octet[] requestingSourceUuid = Octet.Array(Constants.PTP_UUID_LENGTH);

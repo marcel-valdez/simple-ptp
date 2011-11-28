@@ -14,8 +14,9 @@ import data.constants.Constants;
  *
  * @author Marcel
  */
-public final class Port extends DataStruct {
+public final class PortDataSet extends DataStruct {
 
+    public static final PortDataSet Empty = new PortDataSet();
     UInt16 returnedPortNumber = UInt16.Zero;
     UInt8 portState = UInt8.Zero;
     UInt16 lastSyncEventSequenceNumber = UInt16.Zero;

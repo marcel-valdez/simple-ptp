@@ -11,6 +11,8 @@ import data.types.*;
  * @author Marcel
  */
 public final class MsgManagement  extends DataStruct {
+    
+        public static final MsgManagement Empty = new MsgManagement();
 	UInt8 targetCommunicationTechnology = UInt8.Zero;
 	Octet[]	targetUuid = Octet.Array(Constants.PTP_UUID_LENGTH);
 	UInt16 targetPortId = UInt16.Zero;
@@ -19,6 +21,5 @@ public final class MsgManagement  extends DataStruct {
 	UInt8 managementMessageKey = UInt8.Zero;
 	UInt16 parameterLength = UInt16.Zero;
 	UInt16 recordKey = UInt16.Zero;
-
 	MsgManagementPayload payload = new MsgManagementPayload();
 }

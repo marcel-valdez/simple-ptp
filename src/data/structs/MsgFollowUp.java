@@ -11,6 +11,8 @@ import data.types.UInt16;
  * @author Marcel
  */
 public final class MsgFollowUp extends DataStruct {
+    
+    public static final MsgFollowUp Empty = new MsgFollowUp();
     UInt16 associatedSequenceId = UInt16.Zero;
     TimeRepresentation preciseOriginTimestamp = new TimeRepresentation();
 }

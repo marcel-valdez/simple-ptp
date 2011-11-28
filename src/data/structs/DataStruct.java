@@ -9,7 +9,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,6 +25,10 @@ public class DataStruct {
         byte[] buffer = new byte[1024];
         int length = 0;
         for (Field field : fields) {
+            if (Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+
             try {
                 byte[] data = null;
                 Object fieldValue = field.get(this);
@@ -45,7 +49,7 @@ public class DataStruct {
                         data = value.serialize();
                     }
                 }
-                
+
                 System.arraycopy(data, 0, buffer, length, data.length);
                 length += data.length;
             } catch (IllegalArgumentException ex) {
@@ -66,6 +70,10 @@ public class DataStruct {
         ByteBuffer buffer = ByteBuffer.wrap(data);
 
         for (Field field : fields) {
+            if (Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            
             try {
                 if (DataStruct.class.isAssignableFrom(field.getType())) {
                     DataStruct objectValue = (DataStruct) field.get(this);

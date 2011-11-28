@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package data;
+package data.types;
 
 import data.types.Int16;
 import data.types.Int32;
@@ -108,5 +108,30 @@ public class DataValueTest {
         System.out.println("  expected: " + Long.toHexString(expResult));
         System.out.println("  result: " + Long.toHexString(result));
         assertEquals(expResult, result);
+    }
+    
+
+    /**
+     * Test of ToData method, of class DataValue.
+     */
+    @Test
+    public void testToData() {
+        System.out.println("ToData");
+        
+        long value = 0x1234567890123456L;
+        byte[] expResult = new byte[] { (byte)0x12, (byte)0x34, (byte)0x56, (byte)0x78, (byte)0x90, (byte)0x12, (byte)0x34, (byte)0x56 };
+        byte[] result = DataValue.ToData(value);
+        assertArrayEquals(expResult, result);
+    }
+
+    public class DataValueImpl<T> extends DataValue<T> {
+
+        public DataValueImpl() {
+            super(null);
+        }
+
+        public T getValue() {
+            return null;
+        }
     }
 }

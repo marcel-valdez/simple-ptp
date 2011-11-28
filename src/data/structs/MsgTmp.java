@@ -9,6 +9,8 @@ package data.structs;
  * @author Marcel
  */
 public final class MsgTmp  extends DataStruct {
+    
+        public static final MsgTmp Empty = new MsgTmp();
 	MsgSync	sync = new MsgSync();
 	MsgFollowUp follow = new MsgFollowUp();
 	MsgDelayReq req = new MsgDelayReq();

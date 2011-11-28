@@ -13,6 +13,7 @@ import data.constants.Constants;
  */
 public final class MsgSync extends DataStruct {
 
+    public static final MsgSync Empty = new MsgSync();
     TimeRepresentation originTimestamp = new TimeRepresentation();
     UInt16 epochNumber = UInt16.Zero;
     Int16 currentUTCOffset = Int16.Zero;

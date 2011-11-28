@@ -10,7 +10,9 @@ import data.types.*;
  *
  * @author Marcel
  */
-public final class Parent  extends DataStruct {
+public final class ParentDataSet  extends DataStruct {
+    
+        public static final ParentDataSet Empty = new ParentDataSet();
 	UInt8 parentCommunicationTechnology = UInt8.Zero;
 	Octet[]	parentUuid = Octet.Array(Constants.PTP_UUID_LENGTH);
 	UInt16 parentPortId = UInt16.Zero;
