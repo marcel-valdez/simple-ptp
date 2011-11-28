@@ -16,12 +16,12 @@ public abstract class DataValue<T> {
 
     protected byte[] dataValue;
     public final int Length;
-    
+
     public DataValue(byte[] value) {
-       this.Length = value.length * 8; 
-       this.dataValue = value;
+        this.Length = value.length * 8;
+        this.dataValue = value;
     }
-    
+
     protected DataValue(byte[] value, int length) {
         this.Length = length;
         this.dataValue = value;
@@ -46,12 +46,58 @@ public abstract class DataValue<T> {
 
         return value;
     }
-    
+
     public byte[] serialize() {
         byte[] copy = new byte[this.dataValue.length];
         System.arraycopy(this.dataValue, 0, copy, 0, copy.length);
         return copy;
     }
-    
+
+    public static byte[] ToData(long value) {
+        byte[] data = new byte[8];
+
+        data[0] = (byte) (value >> 56);
+        value = value & 0x00FFFFFFFFFFFFFFl;
+        data[1] = (byte) (value >> 48);
+        value = value & 0x0000FFFFFFFFFFFFl;
+        data[2] = (byte) (value >> 40);
+        value = value & 0x000000FFFFFFFFFFl;
+        data[3] = (byte) (value >> 32);
+        value = value & 0x00000000FFFFFFFFl;
+        data[4] = (byte) (value >> 24);
+        value = value & 0x0000000000FFFFFFl;
+        data[5] = (byte) (value >> 16);
+        value = value & 0x000000000000FFFFl;
+        data[6] = (byte) (value >> 8);
+        value = value & 0x00000000000000FFl;
+        data[7] = (byte) value;
+
+        return data;
+    }
+
+    public static byte[] ToData(int value) {
+        byte[] data = new byte[4];
+
+        data[0] = (byte) (value >> 24);
+        value = value & 0x00FFFFFF;
+        data[1] = (byte) (value >> 16);
+        value = value & 0x0000FFFF;
+        data[2] = (byte) (value >> 8);
+        value = value & 0x000000FF;
+        data[3] = (byte) value;
+
+        return data;
+    }
+
+    public static byte[] ToData(short value) {
+        byte[] data = new byte[2];
+
+        data[0] = (byte) (value >> 8);
+        value = (short) (value & 0x00FF);
+        data[1] = (byte) value;
+
+        return data;
+    }
+
     public abstract T getValue();
 }

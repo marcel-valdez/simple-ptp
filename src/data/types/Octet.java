@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
  *
  * @author Marcel
  */
-public final class Octet extends DataValue<Byte> {
+public class Octet extends DataValue<Byte> {
     public static final Octet Zero = new Octet(new byte[] { 0 });
     
     public Octet(byte... data) {

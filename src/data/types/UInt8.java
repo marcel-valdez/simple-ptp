@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
  *
  * @author Marcel
  */
-public final class UInt8 extends DataValue<Integer> {
+public class UInt8 extends DataValue<Integer> {
 
     public static final UInt8 Zero = new UInt8(new byte[]{0, 0, 0, 0, 0, 0, 0, 0});
 
