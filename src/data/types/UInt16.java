@@ -14,7 +14,7 @@ public class UInt16 extends DataValue<Integer> {
     public static final UInt16 Zero = new UInt16(new byte[] { 0, 0 });
     
     public UInt16(byte... data) {
-        super(new byte[] { data[0], data[1] }, 16);
+        super(new byte[] { data[data.length - 2], data[data.length - 1] }, 16);
     }
     
     @Override

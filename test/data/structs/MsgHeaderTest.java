@@ -56,8 +56,6 @@ public class MsgHeaderTest extends DataStructTest {
         header.sourceUuid[1] = new Octet((byte) 11);
         header.sourceUuid[2] = new Octet((byte) 12);
         header.sourceUuid[3] = new Octet((byte) 13);
-        header.sourceUuid[4] = new Octet((byte) 14);
-        header.sourceUuid[5] = new Octet((byte) 15);
         header.subdomain[0] = new Octet((byte) 16);
         header.subdomain[1] = new Octet((byte) 17);
         header.subdomain[2] = new Octet((byte) 18);

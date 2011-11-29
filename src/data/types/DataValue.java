@@ -4,6 +4,8 @@
  */
 package data.types;
 
+import java.lang.reflect.Array;
+
 /**
  *
  * @author Marcel
@@ -38,10 +40,15 @@ public abstract class DataValue<T> {
     }
 
     protected long ToValue(int bytes) {
+        int length = this.dataValue.length;
         boolean isNegative = this.dataValue[0] < 0;
         long value = isNegative ? 0xffffffffffffffffl : 0;
         for (int i = 0; i < bytes; i++) {
-            value = (value << 8) | (this.dataValue[i] & 0xFF);
+            if (i < (bytes - length)) {
+                value = (value << 8) | (isNegative ? 0xFFL : 0x00L);
+            } else {
+                value = (value << 8) | (this.dataValue[i - (bytes - length)] & 0xFFL);
+            }
         }
 
         return value;
@@ -98,9 +105,9 @@ public abstract class DataValue<T> {
 
         return data;
     }
-    
+
     public boolean equals(DataValue data) {
-       return this.ToValue(8) == data.ToValue(8);
+        return this.getValue() == data.getValue();
     }
 
     public abstract T getValue();

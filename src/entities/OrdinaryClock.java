@@ -44,18 +44,16 @@ public class OrdinaryClock {
      * El número de puertos siempre será 1, ya que
      * no habrá boundary clocks 
      */
-    UInt16 numberPorts = new UInt16((byte) 1);
+    UInt16 numberPorts = new UInt16((byte) 0, (byte) 1);
     /**
      * El motor del protocolo, encargado de hacer las trancisiones de estado
      * del reloj PTP
      */
     private final PTPEngine engine;
-    
     public final ClockIdentity ClockId;
 
     static {
         defaultDataSet = new DefaultDataSet();
-
     }
 
     public OrdinaryClock() {

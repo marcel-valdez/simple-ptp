@@ -14,7 +14,7 @@ public class Octet extends DataValue<Byte> {
     public static final Octet Zero = new Octet(new byte[] { 0 });
     
     public Octet(byte... data) {
-        super(new byte[] { data[0] }, 8);
+        super(new byte[] { data[data.length - 1] }, 8);
     }
     
     @Override

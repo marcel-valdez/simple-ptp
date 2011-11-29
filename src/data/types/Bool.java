@@ -14,7 +14,7 @@ public class Bool extends DataValue<Boolean> {
     public static final Bool True = new Bool((byte) 1);
 
     public Bool(byte... data) {
-        super(new byte[]{data[0]}, 8);
+        super(new byte[]{data[data.length - 1]}, 8);
     }
 
     @Override

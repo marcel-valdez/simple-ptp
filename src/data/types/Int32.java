@@ -14,7 +14,8 @@ public final class Int32 extends DataValue<java.lang.Integer>{
     public static final Int32 Zero = new Int32(new byte[] { 0, 0, 0, 0 });
     
     public Int32(byte... data) {
-        super(new byte[] { data[0], data[1], data[2], data[3] }, 32);
+        super(new byte[] { data[data.length - 4], data[data.length - 3],
+            data[data.length - 2], data[data.length - 1] }, 32);
     }
     
     @Override

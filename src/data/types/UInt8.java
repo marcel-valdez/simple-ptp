@@ -15,7 +15,7 @@ public class UInt8 extends DataValue<Integer> {
     public static final UInt8 Zero = new UInt8(new byte[]{0, 0, 0, 0, 0, 0, 0, 0});
 
     public UInt8(byte... data) {
-        super(new byte[]{data[0]}, 8);
+        super(new byte[]{data[data.length - 1]}, 8);
     }
 
     public UInt8(int value) {

@@ -29,6 +29,7 @@ public class ClockPort {
         IEventInterface eInterface =  Factory.getInstance().CreateEventInterface(this, repo);
         eInterface.setHandler(engine);
         this.eventInterface = eInterface;
+        this.portDataSet = new PortDataSet();
         
         IGeneralInterface gInterface =  Factory.getInstance().CreateGeneralInterface(this, repo);
         gInterface.setHandler(engine);

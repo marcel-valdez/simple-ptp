@@ -15,6 +15,7 @@ import data.structs.PortDataSet;
 import data.structs.TimeRepresentation;
 import data.types.DataValue;
 import data.types.Int32;
+import data.types.UInt16;
 import data.types.UInt32;
 import entities.enums.ManagementKey;
 import entities.enums.PortState;
@@ -25,6 +26,9 @@ import entities.interfaces.IGeneralMsgHandler;
 import entities.interfaces.IGlobalNodesRegistry;
 import entities.interfaces.IInInterface;
 import java.util.Arrays;
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import system.NotImplementedException;
 
 /**
@@ -33,6 +37,7 @@ import system.NotImplementedException;
  */
 public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable {
 
+    final private static Random random = new Random(System.currentTimeMillis());
     final private ClockIdentity ownerId;
     final private OrdinaryClock owner;
     /**
@@ -53,7 +58,7 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
         this.clock = Factory.getInstance().CreateClock();
         owner.currentDataSet = new CurrentDataSet();
         OrdinaryClock.defaultDataSet.timeSource = this.clock.IsHighResolution() ? TimeSource.PTP : TimeSource.INTERNAL_OSCILLATOR;
-
+        Initialize();
         Thread tStart = new Thread(this);
         tStart.start();
         this.thread = tStart;
@@ -62,12 +67,17 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
     private void AttemptInitBMC(PortDataSet ds) {
 
         if (Factory.getInstance().GetGlobalNodesRegistry().InitBMC(this.ownerId.clockUuidField)) {
-            ds.portState = PortState.PRE_MASTER;
+            SetState(PortState.PRE_MASTER);
             this.startedBMC = true;
             SendCandidateBMC();
         } else {
-            ds.portState = PortState.WAIT_PRE_MASTER;
+            SetState(PortState.WAIT_PRE_MASTER);
         }
+    }
+
+    private void SetState(PortState state) {
+        this.PrintStateName(state);
+        this.port.getPortDataSet().portState = state;
     }
 
     private void EndBMC() {
@@ -84,7 +94,7 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
     private void ProcessCandidateMessage(MsgManagement message) {
         // if its me, then start sending the SET_MASTER message
         if (Arrays.equals(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
-            this.port.getPortDataSet().portState = PortState.MASTER;
+            SetState(PortState.MASTER);
             message.managementMessageKey = ManagementKey.BMC_SET_MASTER;
             ForwardMessage(message);
         } else {
@@ -101,18 +111,18 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
             long myVariance = OrdinaryClock.defaultDataSet.clockVariance.getValue();
             if (p1 > myP1 || p2 > myP2 || clockClass > myClockClass || timeSource > myTimeSource || variance > myVariance) {
                 // Yo soy mejor candidato
-                this.port.getPortDataSet().portState = PortState.PRE_MASTER;
+                SetState(PortState.PRE_MASTER);
                 SendCandidateBMC();
             } else if (!this.startedBMC) {
                 // El candidato es mejor o igual, se queda
-                this.port.getPortDataSet().portState = PortState.MASTER_VOTER;
+                SetState(PortState.MASTER_VOTER);
                 ForwardMessage(message);
             } else {
                 // Ya dio la vuelta el mensaje, hay que enviar set master del
                 // candidato recibido
                 message.managementMessageKey = ManagementKey.BMC_SET_MASTER;
                 // Somos slave, ya lo sabemos :)
-                this.port.getPortDataSet().portState = PortState.SLAVE;
+                SetState(PortState.SLAVE);
                 ForwardMessage(message);
             }
         }
@@ -121,9 +131,9 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
     private void ProcessSetMasterMessage(MsgManagement message) {
         // Set the new master, if its me, then change the state, and stop sending the message
         if (Arrays.equals(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
-            this.port.getPortDataSet().portState = PortState.MASTER;
+            SetState(PortState.MASTER);
         } else {
-            this.port.getPortDataSet().portState = PortState.SLAVE;
+            SetState(PortState.SLAVE);
         }
 
         if (!this.startedBMC) {
@@ -159,7 +169,10 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
          * Qué hacer al inicializar? Empezar el BMC y pasar a PRE_MASTER?
          * Sí, entonces se requiere acceso al repositorio global.
          */
+        this.SetState(PortState.INITIALIZING);
         PortDataSet ds = port.getPortDataSet();
+        ds.portIdField = new UInt16((byte) random.nextInt(127), (byte) random.nextInt(127));
+        ds.portUuidField = this.ownerId.clockUuidField;
         IGlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
         registry.RegisterClock(
                 this.ownerId.clockUuidField,
@@ -167,6 +180,7 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
                 port.getGeneralInterface(),
                 port.getEventInterface()));
         registry.RegisterRepository(this.ownerId.clockUuidField, port.getRepo());
+        this.SetState(PortState.WAIT_PRE_MASTER);
         AttemptInitBMC(ds);
     }
 
@@ -238,8 +252,11 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
 
             PortDataSet ds = port.getPortDataSet();
             if (ds.portState.equals(PortState.INITIALIZING)) {
-                Initialize();
+                /**
+                 * Pasar a BMC?
+                 */
             } else if (ds.portState.equals(PortState.MASTER)) {
+
                 /**
                  * Si estamos en master, hay que sincronizar a los putos
                  */
@@ -247,6 +264,7 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
                 sync.originTimestamp = this.clock.getTime();
                 this.port.getEventInterface().OutSync(sync);
             } else if (ds.portState.equals(PortState.WAIT_PRE_MASTER)) {
+
                 IGlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
                 AttemptInitBMC(ds);
             } else if (ds.portState.equals(PortState.MASTER_VOTER)) {
@@ -282,6 +300,39 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
                  * ???
                  */
             }
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ex) {
+                Logger.getGlobal().log(Level.WARNING, ex.getMessage());
+            }
+        }
+    }
+
+    private void PrintStateName(PortState state) {
+        if (state.equals(PortState.INITIALIZING)) {
+            System.out.println("Change To: INITIALIZING");
+        } else if (state.equals(PortState.MASTER)) {
+            System.out.println("Change To: MASTER");
+        } else if (state.equals(PortState.WAIT_PRE_MASTER)) {
+            System.out.println("Change To: WAIT_PRE_MASTER");
+        } else if (state.equals(PortState.MASTER_VOTER)) {
+            System.out.println("Change To: MASTER_VOTER");
+        } else if (state.equals(PortState.PRE_MASTER)) {
+            System.out.println("Change To: PRE_MASTER");
+        } else if (state.equals(PortState.SLAVE)) {
+            System.out.println("Change To: SLAVE");
+        } else if (state.equals(PortState.LISTENING)) {
+            System.out.println("Change To: LISTENING");
+        } else if (state.equals(PortState.DISABLED)) {
+            System.out.println("Change To: DISABLED");
+        } else if (state.equals(PortState.FAULTY)) {
+            System.out.println("Change To: FAULTY");
+        } else if (state.equals(PortState.PASSIVE)) {
+            System.out.println("Change To: PASSIVE");
+        } else if (state.equals(PortState.UNCALIBRATED)) {
+            System.out.println("Change To: UNCALIBRATED");
+        } else {
+            System.out.println("Unkown State! Impossible, value: " + state.getValue());
         }
     }
 }

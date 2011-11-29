@@ -48,7 +48,7 @@ public final class Constants {
     public static final String IDENTIFIER_DFLT = "DFLT";
 
     /* ptp constants */
-    public static final int PTP_UUID_LENGTH = 6;
+    public static final int PTP_UUID_LENGTH = 4;
     public static final int PTP_CODE_STRING_LENGTH = 4;
     public static final int PTP_SUBDOMAIN_NAME_LENGTH = 16;
     public static final int PTP_MAX_MANAGEMENT_PAYLOAD_SIZE = 90;

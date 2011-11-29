@@ -11,10 +11,13 @@ import java.nio.ByteBuffer;
  * @author Marcel
  */
 public final class Int64 extends DataValue<Long> {
-    public static final Int64 Zero = new Int64(new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
+
+    public static final Int64 Zero = new Int64(new byte[]{0, 0, 0, 0, 0, 0, 0, 0});
     
     public Int64(byte... data) {
-        super(new byte[] { data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7] }, 64);
+        super(new byte[]{data[data.length - 8], data[data.length - 7],
+            data[data.length - 6], data[data.length - 5], data[data.length - 4],
+            data[data.length - 3], data[data.length - 2], data[data.length - 1]}, 64);
     }
     
     @Override

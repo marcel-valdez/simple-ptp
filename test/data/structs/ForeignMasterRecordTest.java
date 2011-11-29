@@ -52,8 +52,6 @@ public class ForeignMasterRecordTest extends DataStructTest {
         expected.foreign_master_uuid[1] = new Octet((byte) 6);
         expected.foreign_master_uuid[2] = new Octet((byte) 7);
         expected.foreign_master_uuid[3] = new Octet((byte) 8);
-        expected.foreign_master_uuid[4] = new Octet((byte) 9);
-        expected.foreign_master_uuid[5] = new Octet((byte) 10);
         MsgHeader header = new MsgHeader();
         header.control = new UInt8((byte) 1);
         header.flags[0] = new Octet((byte) 2);
@@ -66,8 +64,6 @@ public class ForeignMasterRecordTest extends DataStructTest {
         header.sourceUuid[1] = new Octet((byte) 11);
         header.sourceUuid[2] = new Octet((byte) 12);
         header.sourceUuid[3] = new Octet((byte) 13);
-        header.sourceUuid[4] = new Octet((byte) 14);
-        header.sourceUuid[5] = new Octet((byte) 15);
         header.subdomain[0] = new Octet((byte) 16);
         header.subdomain[1] = new Octet((byte) 17);
         header.subdomain[2] = new Octet((byte) 18);
