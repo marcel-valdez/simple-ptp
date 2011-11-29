@@ -12,12 +12,12 @@ import data.constants.Constants;
  * @author Marcel
  */
 public final class Foreign extends DataStruct {
-    
+
     public static final Foreign Empty = new Foreign();
-    UInt16 returnedPortNumber = UInt16.Zero;
-    UInt16 returnedRecordNumber = UInt16.Zero;
-    UInt8 foreignMasterCommunicationTechnology = UInt8.Zero;
-    Octet[] foreignMasterUuid = Octet.Array(Constants.PTP_UUID_LENGTH);
-    UInt16 foreignMasterPortId = UInt16.Zero;
-    UInt16 foreignMasterSyncs = UInt16.Zero;
+    public UInt16 returnedPortNumber = UInt16.Zero;
+    public UInt16 returnedRecordNumber = UInt16.Zero;
+    public UInt8 foreignMasterCommunicationTechnology = UInt8.Zero;
+    public Octet[] foreignMasterUuid = Octet.Array(Constants.PTP_UUID_LENGTH);
+    public UInt16 foreignMasterPortId = UInt16.Zero;
+    public UInt16 foreignMasterSyncs = UInt16.Zero;
 }

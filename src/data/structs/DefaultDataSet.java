@@ -6,26 +6,47 @@ package data.structs;
 
 import data.types.*;
 import data.constants.Constants;
+import entities.LocalClock;
+import entities.enums.ClockAccuracy;
+import entities.enums.ClockClass;
+import entities.enums.TimeSource;
 
 /**
  *
  * @author Marcel
  */
 public final class DefaultDataSet extends DataStruct {
+
     public static final DefaultDataSet Empty = new DefaultDataSet();
-    UInt8 clockCommunicationTechnology = UInt8.Zero;
-    Octet[] clockUuidField = Octet.Array(Constants.PTP_UUID_LENGTH);
-    UInt16 clockPortField = UInt16.Zero;
-    UInt8 clockStratum = UInt8.Zero;
-    Octet[] clockIdentifier = Octet.Array(Constants.PTP_CODE_STRING_LENGTH);
-    Int16 clockVariance = Int16.Zero;
-    Bool clockFollowupCapable = Bool.False;
-    Bool preferred = Bool.False;
-    Bool initializable = Bool.False;
-    Bool externalTiming = Bool.False;
-    Bool isBoundaryClock = Bool.False;
-    Octet syncInterval = Octet.Zero;
-    Octet[] subdomainName = Octet.Array(Constants.PTP_SUBDOMAIN_NAME_LENGTH);
-    UInt16 numberPorts = UInt16.Zero;
-    UInt16 numberForeignRecords = UInt16.Zero;
+    public UInt8 clockCommunicationTechnology = UInt8.Zero;
+    public Octet[] clockUuidField = Octet.Array(Constants.PTP_UUID_LENGTH);
+    public UInt16 clockPortField = UInt16.Zero;
+    public UInt8 clockVariance = ClockAccuracy.GetAccuracy(new TimeRepresentation(LocalClock.GetAccuracy()));
+    public Bool clockFollowupCapable = Bool.False;
+    public Bool preferred = Bool.False;
+    public Bool initializable = Bool.False;
+    public Bool externalTiming = Bool.False;
+    public Bool isBoundaryClock = Bool.False;
+    public Octet syncInterval = Octet.Zero;
+    public Octet[] subdomainName = Octet.Array(Constants.PTP_SUBDOMAIN_NAME_LENGTH);
+    public UInt16 numberPorts = UInt16.Zero;
+    public UInt16 numberForeignRecords = UInt16.Zero;
+    /**
+     * Prioridad del reloj 
+     */
+    public UInt8 priority1 = new UInt8((byte) 1);
+    /**
+     * Desempate de prioridad del reloj 
+     */
+    public UInt8 priority2 = new UInt8((byte) 2);
+    /**
+     * Clase de reloj (definido por el usuario) 
+     */
+    public UInt8 clockClass = ClockClass.DegradationAlternativeB;
+    /**
+     * Calidad de la fuente de tiempo del reloj (si este es el gran-maestro,
+     * entonces es la calidad del reloj local, sino, es la calidad del reloj
+     * maestro de este reloj )
+     */
+    public UInt8 timeSource = TimeSource.INTERNAL_OSCILLATOR;
 }

@@ -11,6 +11,6 @@ import data.types.*;
 public final class TimeInternal extends DataStruct{
     
     public static final TimeInternal Empty = new TimeInternal();
-    Int32 seconds = Int32.Zero;
-    Int32 nanoseconds = Int32.Zero;
+    public Int32 seconds = Int32.Zero;
+    public Int32 nanoseconds = Int32.Zero;
 }

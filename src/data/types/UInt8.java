@@ -18,6 +18,10 @@ public class UInt8 extends DataValue<Integer> {
         super(new byte[]{data[0]}, 8);
     }
 
+    public UInt8(int value) {
+        this(DataValue.ToData(value));
+    }
+
     @Override
     public Integer getValue() {
         return (int) this.ToUValue(1);

@@ -28,18 +28,13 @@ public class InInterface implements IInInterface {
     }
 
     @Override
-    public void InDelayRequest(MsgDelayReq delayRequest) {
-        this.mInEvent.InDelayRequest(delayRequest);
+    public MsgDelayResp InDelayRequest(MsgDelayReq delayRequest) {
+        return this.mInEvent.InDelayRequest(delayRequest);
     }
     
     @Override
     public void InSync(MsgSync sync) {
         this.mInEvent.InSync(sync);
-    }
-    
-    @Override
-    public void InDelayResp(MsgDelayResp delayResponse) {
-        this.mInEvent.InDelayResp(delayResponse);
     }
     
     @Override

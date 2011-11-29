@@ -4,36 +4,39 @@
  */
 package entities;
 
-import entities.interfaces.IOutGeneralInterface;
-import entities.interfaces.IInGeneralInterface;
+import entities.interfaces.IGeneralInterface;
 import entities.interfaces.IGeneralMsgHandler;
 import data.structs.MsgManagement;
 import data.structs.PortDataSet;
-import java.util.ArrayList;
-import java.util.List;
+import entities.interfaces.IInInterface;
+import entities.interfaces.INetNodesRepository;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author Marcel
  */
-class GeneralInterface implements IInGeneralInterface, IOutGeneralInterface {
+class GeneralInterface implements IGeneralInterface {
 
     final private ClockPort mOwner;
-    final private List<IGeneralMsgHandler> handlers;
+    private IGeneralMsgHandler mHandler;
+    private final INetNodesRepository mRepo;
 
-    public GeneralInterface(ClockPort owner) {
+    public GeneralInterface(ClockPort owner, INetNodesRepository repo) {
         this.mOwner = owner;
-        this.handlers = new ArrayList<>();
+        this.mRepo = repo;
     }
 
-    public void RegisterHandler(IGeneralMsgHandler handler) {
-        this.handlers.add(handler);
+    @Override
+    public void setHandler(IGeneralMsgHandler handler) {
+        this.mHandler = handler;
     }
 
     public PortDataSet GetPortDataSet() {
-        return this.mOwner.portDataSet;
+        return this.mOwner.getPortDataSet();
     }
-    
+
     /* Envía un mensaje de gestión por el puerto al cuál pertenece esta interfaz */
     @Override
     public void OutAnnounce(MsgManagement mngMsg) {
@@ -45,13 +48,18 @@ class GeneralInterface implements IInGeneralInterface, IOutGeneralInterface {
         // todos los clientes que estén escuchando a la lista, 
         // actualicen su lista.
         // ¿cómo? Nosé, y es a través de CORBA
+        for (IInInterface handler : this.mRepo.GetNodes()) {
+            try {
+                handler.InAnnounce(mngMsg);
+            } catch (Exception e) {
+                Logger.getLogger(GeneralInterface.class.getName()).log(Level.WARNING, null, e);
+            }
+        }
     }
 
     /* Recibe un mensaje administrativo de un nodo externo */
     @Override
     public void InAnnounce(MsgManagement mngMsg) {
-        for (IGeneralMsgHandler handler : handlers) {
-            handler.ProcessMessage(mngMsg);
-        }
+        this.mHandler.ProcessMessage(mngMsg);
     }
 }

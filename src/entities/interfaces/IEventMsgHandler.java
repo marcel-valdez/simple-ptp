@@ -20,10 +20,7 @@ public interface IEventMsgHandler {
     void ProcessSync(MsgSync message);
     
     /* Processes a delay request message */
-    void ProcessDelayReq(MsgDelayReq message);
-    
-    /* Processes a delay response message */
-    void ProcessDelayResp(MsgDelayResp message);
+    MsgDelayResp ProcessDelayReq(MsgDelayReq message);
     
     /* Processes a follow-up message */
     void ProcessFollowUp(MsgFollowUp message);

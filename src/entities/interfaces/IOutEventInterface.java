@@ -14,9 +14,7 @@ import data.structs.MsgSync;
  */
 public interface IOutEventInterface {
 
-    void OutDelayRequest(MsgDelayReq delayRequest);
+    MsgDelayResp OutDelayRequest(MsgDelayReq delayRequest);
 
     void OutSync(MsgSync sync);
-    
-    void OutDelayResponse(MsgDelayResp delayResponse);
 }

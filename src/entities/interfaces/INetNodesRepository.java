@@ -10,9 +10,9 @@ package entities.interfaces;
  */
 public interface INetNodesRepository {
 
-    void Register(IInInterface external);
+    void RegisterClock(IInInterface external);
 
-    void Unregister(IInInterface external);
+    void UnregisterClock(IInInterface external);
     
     IInInterface[] GetNodes();
 }

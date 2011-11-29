@@ -14,4 +14,12 @@ public final class TimeRepresentation extends DataStruct{
         public static final TimeRepresentation Empty = new TimeRepresentation();
 	public UInt32 seconds = UInt32.Zero;
 	public Int32 nanoseconds = Int32.Zero;
+        
+        public TimeRepresentation() {
+        }
+        
+        public TimeRepresentation(long nanos) {
+            this.seconds = new UInt32(DataValue.ToData(nanos / 1000000000L));
+            this.nanoseconds = new Int32(DataValue.ToData(nanos % 1000000000L));
+        }
 }

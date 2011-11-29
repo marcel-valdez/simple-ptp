@@ -15,11 +15,9 @@ import data.structs.PortDataSet;
  */
 public interface IInEventInterface {
 
-    void InDelayRequest(MsgDelayReq delayRequest);
+    MsgDelayResp InDelayRequest(MsgDelayReq delayRequest);
 
     void InSync(MsgSync sync);
-    
-    void InDelayResp(MsgDelayResp delayResponse);
     
     PortDataSet GetPortDataSet();
 }

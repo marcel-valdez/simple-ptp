@@ -4,71 +4,101 @@
  */
 package entities;
 
-import entities.interfaces.IOutEventInterface;
-import entities.interfaces.IInEventInterface;
-import entities.interfaces.IEventMsgHandler;
+import entities.interfaces.IEventInterface;
 import data.structs.MsgDelayReq;
 import data.structs.MsgDelayResp;
 import data.structs.MsgSync;
 import data.structs.PortDataSet;
-import java.util.ArrayList;
-import java.util.List;
+import entities.interfaces.IEventMsgHandler;
+import entities.interfaces.IInEventInterface;
+import entities.interfaces.INetNodesRepository;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author Marcel
  */
-class EventInterface implements IInEventInterface, IOutEventInterface {
+public class EventInterface implements IEventInterface {
 
-    private ClockPort mOwner;
-    private List<IEventMsgHandler> handlers;
-    private List<PortDataSet> clockPorts;
+    final private ClockPort mOwner;
+    private IEventMsgHandler mHandler;
+    final private PortDataSet portDataSet;
+    private IInEventInterface mMasterClock;
+    private INetNodesRepository mRepo;
 
-    public EventInterface(ClockPort owner) {
+    public EventInterface(ClockPort owner, INetNodesRepository repo) {
         this.mOwner = owner;
-        this.handlers = new ArrayList<>();
-        this.clockPorts = new ArrayList<>();
+        this.portDataSet = owner.getPortDataSet();
+        this.mRepo = repo;
     }
 
     public PortDataSet GetPortDataSet() {
-        return this.mOwner.portDataSet;
-    }
-    
-    /* Envía el mensaje delay request por la red */
-    @Override
-    public void OutDelayRequest(MsgDelayReq delayRequest) {
+        return this.mOwner.getPortDataSet();
     }
 
-    /* Envía el mensaje de sincronización por la red */
+    @Override
+    public void setHandler(IEventMsgHandler handler) {
+        this.mHandler = handler;
+    }
+
+    /** 
+     * Envía el mensaje delay request por la red 
+     * -- Comunicación síncrona remota
+     */
+    @Override
+    public MsgDelayResp OutDelayRequest(MsgDelayReq delayRequest) {
+        /*/ El mensaje se envía al master-clock */
+        try {
+            return mMasterClock.InDelayRequest(delayRequest);
+        } catch (Exception e) {
+            Logger.getLogger(EventInterface.class.getName()).log(Level.WARNING, null, e);
+        }
+
+        return MsgDelayResp.Empty;
+    }
+
+    /** 
+     * Envía el mensaje de sincronización por la red .
+     * -- Comunicación asíncrona remota
+     */
     @Override
     public void OutSync(MsgSync sync) {
-    }
-
-    /* Recibe el mensaje delay request por la red */
-    @Override
-    public void InDelayRequest(MsgDelayReq delayRequest) {
-        for (IEventMsgHandler handler : handlers) {
-            handler.ProcessDelayReq(delayRequest);
+        /** Debe enviar el sync al slave-clock */
+        for (IInEventInterface slave : mRepo.GetNodes()) {
+            // Debería ser one-way (asíncrono)
+            if (slave != this.mMasterClock) {
+                try {
+                    slave.InSync(sync);
+                } catch (Exception e) {
+                    Logger.getLogger(EventInterface.class.getName()).log(Level.WARNING, null, e);
+                }
+            }
         }
     }
 
-    /* Recibe el mensaje delay request por la red */
+    /** 
+     * Recibe el mensaje delay request por la red 
+     * -- Comunicación síncrona remota (por cliente),
+     *    asíncrona para recibir peticiones de muchos
+     *    clientes (CORBA debe proveer esto)
+     **/
     @Override
-    public void OutDelayResponse(MsgDelayResp delayResponse) {
+    public MsgDelayResp InDelayRequest(MsgDelayReq delayRequest) {
+        /**
+         * Solamente debería entrar aquí si es un master el
+         * puerto en cuestión
+         */
+        return mHandler.ProcessDelayReq(delayRequest);
     }
 
-    /* Recibe el mensaje de sincronización por la red */
+    /** 
+     * Recibe el mensaje de sincronización por la red,
+     * este método debe ser asíncrono (a nivel CORBA).
+     * -- Comunicación asíncrona remota
+     **/
     @Override
     public void InSync(MsgSync sync) {
-        for (IEventMsgHandler handler : handlers) {
-            handler.ProcessSync(sync);
-        }
-    }
-
-    @Override
-    public void InDelayResp(MsgDelayResp delayResponse) {
-        for (IEventMsgHandler handler : handlers) {
-            handler.ProcessDelayResp(delayResponse);
-        }
+        mHandler.ProcessSync(sync);
     }
 }

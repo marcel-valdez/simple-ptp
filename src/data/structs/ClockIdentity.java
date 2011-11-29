@@ -15,8 +15,8 @@ import data.constants.Constants;
  */
 public final class ClockIdentity extends DataStruct {
     public static final ClockIdentity Empty = new ClockIdentity();
-    UInt8 clockCommunicationTechnology = UInt8.Zero;
-    Octet[] clockUuidField = Octet.Array(Constants.PTP_UUID_LENGTH);
-    UInt16 clockPortField = UInt16.Zero;
-    Octet[] manufacturerIdentity = Octet.Array(Constants.MANUFACTURER_ID_LENGTH);
+    public UInt8 clockCommunicationTechnology = UInt8.Zero;
+    public Octet[] clockUuidField = Octet.Array(Constants.PTP_UUID_LENGTH);
+    public UInt16 clockPortField = UInt16.Zero;
+    public Octet[] manufacturerIdentity = Octet.Array(Constants.MANUFACTURER_ID_LENGTH);
 }

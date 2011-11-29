@@ -10,11 +10,11 @@ package data.structs;
 public final class MsgManagementPayload extends DataStruct {
     
         public static final MsgManagementPayload Empty = new MsgManagementPayload();
-	ClockIdentity clockIdentity = new ClockIdentity();
-	DefaultDataSet defaultData = new DefaultDataSet();
-	CurrentDataSet current = new CurrentDataSet();
-	ParentDataSet parent = new ParentDataSet();
-	PortDataSet port = new PortDataSet();
-	GlobalTime globalTime = new GlobalTime();
-	Foreign foreign = new Foreign();
+	public ClockIdentity clockIdentity = new ClockIdentity();
+	public DefaultDataSet defaultData = new DefaultDataSet();
+	public CurrentDataSet current = new CurrentDataSet();
+	public ParentDataSet parent = new ParentDataSet();
+	public PortDataSet port = new PortDataSet();
+	public GlobalTime globalTime = new GlobalTime();
+	public Foreign foreign = new Foreign();
 }

@@ -98,6 +98,10 @@ public abstract class DataValue<T> {
 
         return data;
     }
+    
+    public boolean equals(DataValue data) {
+       return this.ToValue(8) == data.ToValue(8);
+    }
 
     public abstract T getValue();
 }
