@@ -11,5 +11,5 @@ import data.structs.MsgManagement;
  * @author Marcel
  */
 public interface IGeneralMsgHandler {
-    void ProcessMessage(MsgManagement message);
+    void ProcessAnnouncement(MsgManagement message);
 }

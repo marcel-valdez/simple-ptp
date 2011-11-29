@@ -30,4 +30,22 @@ public class Octet extends DataValue<Byte> {
         
         return result;
     }
+    
+    public static Octet[] Array(byte[] data) {
+        Octet[] result = new Octet[data.length];
+        for(int i = 0; i < data.length; i++) {
+            result[i] = new Octet(data[i]);
+        }
+        
+        return result;
+    }
+    
+    public static byte[] ToValue(Octet[] data) {
+        byte[] result = new byte[data.length];
+        for(int i = 0; i < result.length; i++) {
+            result[i] = data[i].getValue();
+        }
+        
+        return result;
+    }
 }

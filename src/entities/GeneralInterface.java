@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  *
  * @author Marcel
  */
-class GeneralInterface implements IGeneralInterface {
+public class GeneralInterface implements IGeneralInterface {
 
     final private ClockPort mOwner;
     private IGeneralMsgHandler mHandler;
@@ -60,6 +60,6 @@ class GeneralInterface implements IGeneralInterface {
     /* Recibe un mensaje administrativo de un nodo externo */
     @Override
     public void InAnnounce(MsgManagement mngMsg) {
-        this.mHandler.ProcessMessage(mngMsg);
+        this.mHandler.ProcessAnnouncement(mngMsg);
     }
 }

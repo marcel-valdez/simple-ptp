@@ -31,12 +31,20 @@ public class LocalClock {
         }
     }
 
-    public void setOffset(long offset) {
-        this.mOffSet = offset;
+    /**
+     * Sets the clock's offset in nanoseconds
+     * @param nanos amount of nanoseconds to set off 
+     */
+    public void setOffset(long nanos) {
+        this.mOffSet = nanos / 1000L;
     }
 
+    /**
+     * Gets the offset of this clock in nanoseconds
+     * @return the amount of nano seconds the clock is offset
+     */
     public long getOffset() {
-        return this.mOffSet;
+        return this.mOffSet * 1000L;
     }
 
     public long getTimeMillis() {
@@ -66,7 +74,7 @@ public class LocalClock {
     public static long GetAccuracy() {
         return (1000L * 1000L * 1000L) / TimeStamp.GetFrequency();
     }
-    
+
     public boolean IsHighResolution() {
         return this.useTicks;
     }

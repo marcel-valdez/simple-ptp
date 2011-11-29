@@ -5,8 +5,6 @@
 package entities;
 
 import data.structs.ClockIdentity;
-import entities.enums.TimeSource;
-import entities.enums.ClockClass;
 import data.structs.CurrentDataSet;
 import data.structs.DefaultDataSet;
 import data.structs.ParentDataSet;
@@ -16,7 +14,6 @@ import data.types.Bool;
 import data.types.DataValue;
 import data.types.Octet;
 import data.types.UInt16;
-import data.types.UInt8;
 import entities.factory.Factory;
 import java.util.Random;
 
@@ -74,7 +71,7 @@ public class OrdinaryClock {
         portDS.portUuidField[2] = new Octet((byte) random.nextInt(127));
         portDS.portUuidField[3] = new Octet((byte) random.nextInt(127));
         portDS.portIdField = new UInt16(DataValue.ToData(random.nextInt(0xFFFF)));
-        this.engine = Factory.getInstance().CreateEngine(this.ClockId, portDS);
+        this.engine = Factory.getInstance().CreateEngine(this, portDS);
     }
 
     /**

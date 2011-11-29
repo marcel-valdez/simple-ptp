@@ -16,16 +16,16 @@ import data.structs.TimeRepresentation;
 import data.types.DataValue;
 import data.types.Int32;
 import data.types.UInt32;
-import entities.enums.ClockClass;
 import entities.enums.ManagementKey;
 import entities.enums.PortState;
 import entities.enums.TimeSource;
 import entities.factory.Factory;
-import entities.global.GlobalNodesRegistry;
 import entities.interfaces.IEventMsgHandler;
 import entities.interfaces.IGeneralMsgHandler;
+import entities.interfaces.IGlobalNodesRegistry;
 import entities.interfaces.IInInterface;
 import java.util.Arrays;
+import system.NotImplementedException;
 
 /**
  *
@@ -38,11 +38,13 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
     /**
      * El puerto por el cuál se comunica el reloj 
      */
-    final ClockPort port;
+    private final ClockPort port;
     /**
      * El reloj local, sincronizado en caso de que no sea maestro este reloj 
      */
-    final LocalClock clock;
+    final private LocalClock clock;
+    final private Thread thread;
+    private boolean startedBMC = false;
 
     public PTPEngine(OrdinaryClock owner, PortDataSet portData) {
         this.owner = owner;
@@ -51,6 +53,121 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
         this.clock = Factory.getInstance().CreateClock();
         owner.currentDataSet = new CurrentDataSet();
         OrdinaryClock.defaultDataSet.timeSource = this.clock.IsHighResolution() ? TimeSource.PTP : TimeSource.INTERNAL_OSCILLATOR;
+
+        Thread tStart = new Thread(this);
+        tStart.start();
+        this.thread = tStart;
+    }
+
+    private void AttemptInitBMC(PortDataSet ds) {
+
+        if (Factory.getInstance().GetGlobalNodesRegistry().InitBMC(this.ownerId.clockUuidField)) {
+            ds.portState = PortState.PRE_MASTER;
+            this.startedBMC = true;
+            SendCandidateBMC();
+        } else {
+            ds.portState = PortState.WAIT_PRE_MASTER;
+        }
+    }
+
+    private void EndBMC() {
+        if (Factory.getInstance().GetGlobalNodesRegistry().EndBMC(this.ownerId.clockUuidField)) {
+            this.startedBMC = false;
+        }
+    }
+
+    private void ForwardMessage(MsgManagement message) {
+        IInInterface neighbor = Factory.getInstance().GetGlobalNodesRegistry().GetNextClock(this.ownerId.clockUuidField);
+        neighbor.InAnnounce(message);
+    }
+
+    private void ProcessCandidateMessage(MsgManagement message) {
+        // if its me, then start sending the SET_MASTER message
+        if (Arrays.equals(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
+            this.port.getPortDataSet().portState = PortState.MASTER;
+            message.managementMessageKey = ManagementKey.BMC_SET_MASTER;
+            ForwardMessage(message);
+        } else {
+            // Compare the dataset
+            int p1 = message.payload.defaultData.priority1.getValue();
+            int myP1 = OrdinaryClock.defaultDataSet.priority1.getValue();
+            int p2 = message.payload.defaultData.priority2.getValue();
+            int myP2 = OrdinaryClock.defaultDataSet.priority2.getValue();
+            int clockClass = message.payload.defaultData.clockClass.getValue();
+            int myClockClass = OrdinaryClock.defaultDataSet.clockClass.getValue();
+            int timeSource = message.payload.defaultData.timeSource.getValue();
+            int myTimeSource = OrdinaryClock.defaultDataSet.timeSource.getValue();
+            long variance = message.payload.defaultData.clockVariance.getValue();
+            long myVariance = OrdinaryClock.defaultDataSet.clockVariance.getValue();
+            if (p1 > myP1 || p2 > myP2 || clockClass > myClockClass || timeSource > myTimeSource || variance > myVariance) {
+                // Yo soy mejor candidato
+                this.port.getPortDataSet().portState = PortState.PRE_MASTER;
+                SendCandidateBMC();
+            } else if (!this.startedBMC) {
+                // El candidato es mejor o igual, se queda
+                this.port.getPortDataSet().portState = PortState.MASTER_VOTER;
+                ForwardMessage(message);
+            } else {
+                // Ya dio la vuelta el mensaje, hay que enviar set master del
+                // candidato recibido
+                message.managementMessageKey = ManagementKey.BMC_SET_MASTER;
+                // Somos slave, ya lo sabemos :)
+                this.port.getPortDataSet().portState = PortState.SLAVE;
+                ForwardMessage(message);
+            }
+        }
+    }
+
+    private void ProcessSetMasterMessage(MsgManagement message) {
+        // Set the new master, if its me, then change the state, and stop sending the message
+        if (Arrays.equals(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
+            this.port.getPortDataSet().portState = PortState.MASTER;
+        } else {
+            this.port.getPortDataSet().portState = PortState.SLAVE;
+        }
+
+        if (!this.startedBMC) {
+            // Hay que reenviar el mensaje
+            this.ForwardMessage(message);
+        } else {
+            // Si yo empecé el BMC, entonces aquí acaba, no hay nada qué hacer.
+            // más que terminar el algoritmo
+            this.EndBMC();
+        }
+    }
+
+    private void SendCandidateBMC() {
+        MsgManagement msg = new MsgManagement();
+        msg.managementMessageKey = ManagementKey.BMC_CANDIDATE;
+        msg.payload.clockIdentity = this.ownerId;
+        msg.payload.defaultData = OrdinaryClock.defaultDataSet;
+        msg.payload.current = this.owner.currentDataSet;
+        msg.payload.port = this.port.getPortDataSet();
+        this.ForwardMessage(msg);
+    }
+
+    private void UpdateTime(long offset, long delay) {
+        this.clock.setOffset(offset);
+        this.owner.currentDataSet.offsetFromMaster.seconds = new UInt32(DataValue.ToData(offset / 1000000000L));
+        this.owner.currentDataSet.offsetFromMaster.nanoseconds = new Int32(DataValue.ToData(offset % 1000000000L));
+        this.owner.currentDataSet.oneWayDelay.seconds = new UInt32(DataValue.ToData(delay / 1000000000L));
+        this.owner.currentDataSet.oneWayDelay.nanoseconds = new Int32(DataValue.ToData(delay % 1000000000L));
+    }
+
+    private void Initialize() {
+        /**
+         * Qué hacer al inicializar? Empezar el BMC y pasar a PRE_MASTER?
+         * Sí, entonces se requiere acceso al repositorio global.
+         */
+        PortDataSet ds = port.getPortDataSet();
+        IGlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
+        registry.RegisterClock(
+                this.ownerId.clockUuidField,
+                Factory.getInstance().CreateInInterface(
+                port.getGeneralInterface(),
+                port.getEventInterface()));
+        registry.RegisterRepository(this.ownerId.clockUuidField, port.getRepo());
+        AttemptInitBMC(ds);
     }
 
     @Override
@@ -60,6 +177,7 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
         if (ds.portState.equals(PortState.MASTER)) {
             /**
              * ¿Si somos master, ignoramos el mensaje, pero actualizamos varianza?
+             * NO.
              */
         } else if (ds.portState.equals(PortState.SLAVE)) {
             /**
@@ -91,64 +209,24 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
         }
     }
 
-    private void AttemptInitBMC(GlobalNodesRegistry registry, PortDataSet ds) {
-        if (registry.InitBMC(this.ownerId.clockUuidField)) {
-            ds.portState = PortState.PRE_MASTER;
-            SendCandidateBMC(registry);
-        } else {
-            ds.portState = PortState.WAIT_PRE_MASTER;
-        }
-    }
-
-    private void SendCandidateBMC(GlobalNodesRegistry registry) {
-        MsgManagement msg = new MsgManagement();
-        msg.managementMessageKey = ManagementKey.BMC_CANDIDATE;
-        msg.payload.clockIdentity = this.ownerId;
-        msg.payload.defaultData = OrdinaryClock.defaultDataSet;
-        msg.payload.current = this.owner.currentDataSet;
-        msg.payload.port = this.port.getPortDataSet();
-        IInInterface neighbor = registry.GetNextClock(this.ownerId.clockUuidField);
-        neighbor.InAnnounce(msg);
-    }
-
-    private void SendSetMasterBMC(GlobalNodesRegistry registry) {
-        MsgManagement msg = new MsgManagement();
-        msg.managementMessageKey = ManagementKey.BMC_SET_MASTER;
-        msg.payload.clockIdentity = this.ownerId;
-        msg.payload.defaultData = OrdinaryClock.defaultDataSet;
-        msg.payload.current = this.owner.currentDataSet;
-        msg.payload.port = this.port.getPortDataSet();
-        IInInterface neighbor = registry.GetNextClock(this.ownerId.clockUuidField);
-        neighbor.InAnnounce(msg);
-    }
-
-    private void UpdateTime(long offset, long delay) {
-        this.clock.setOffset(offset);
-        this.owner.currentDataSet.offsetFromMaster.seconds = new UInt32(DataValue.ToData(offset / 1000000000L));
-        this.owner.currentDataSet.offsetFromMaster.nanoseconds = new Int32(DataValue.ToData(offset % 1000000000L));
-        this.owner.currentDataSet.oneWayDelay.seconds = new UInt32(DataValue.ToData(delay / 1000000000L));
-        this.owner.currentDataSet.oneWayDelay.nanoseconds = new Int32(DataValue.ToData(delay % 1000000000L));
-    }
-
     @Override
     public MsgDelayResp ProcessDelayReq(MsgDelayReq message) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        MsgDelayResp response = new MsgDelayResp();
+        response.delayReceiptTimestamp = this.clock.getTime();
+        return response;
     }
 
     @Override
     public void ProcessFollowUp(MsgFollowUp message) {
+        throw new NotImplementedException("Follow_Up not implemented.");
     }
 
     @Override
-    public void ProcessMessage(MsgManagement message) {
+    public void ProcessAnnouncement(MsgManagement message) {
         if (message.managementMessageKey.equals(ManagementKey.BMC_CANDIDATE)) {
-            if (Arrays.equals(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
-                this.port.getPortDataSet().portState = PortState.MASTER;
-
-            }
-            // Compare the dataset, but if its me, then start sending the SET_MASTER message
+            ProcessCandidateMessage(message);
         } else if (message.managementMessageKey.equals(ManagementKey.BMC_SET_MASTER)) {
-            // Set the new master, if its me, then change the state, and stop sending the message
+            ProcessSetMasterMessage(message);
         }
     }
 
@@ -161,13 +239,23 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
             PortDataSet ds = port.getPortDataSet();
             if (ds.portState.equals(PortState.INITIALIZING)) {
                 Initialize();
-            } else if (ds.portState.equals(PortState.PRE_MASTER)) {
-                /**
-                 * Cuando eres candidato master
-                 */
             } else if (ds.portState.equals(PortState.MASTER)) {
                 /**
                  * Si estamos en master, hay que sincronizar a los putos
+                 */
+                MsgSync sync = new MsgSync();
+                sync.originTimestamp = this.clock.getTime();
+                this.port.getEventInterface().OutSync(sync);
+            } else if (ds.portState.equals(PortState.WAIT_PRE_MASTER)) {
+                IGlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
+                AttemptInitBMC(ds);
+            } else if (ds.portState.equals(PortState.MASTER_VOTER)) {
+                /**
+                 * ???
+                 */
+            } else if (ds.portState.equals(PortState.PRE_MASTER)) {
+                /**
+                 * Cuando eres candidato master
                  */
             } else if (ds.portState.equals(PortState.SLAVE)) {
                 /**
@@ -193,27 +281,7 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
                 /**
                  * ???
                  */
-            } else if (ds.portState.equals(PortState.WAIT_PRE_MASTER)) {
-                GlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
-                AttemptInitBMC(registry, ds);
             }
-
         }
-    }
-
-    private void Initialize() {
-        /**
-         * Qué hacer al inicializar? Empezar el BMC y pasar a PRE_MASTER?
-         * Sí, entonces se requiere acceso al repositorio global.
-         */
-        PortDataSet ds = port.getPortDataSet();
-        GlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
-        registry.RegisterClock(
-                this.ownerId.clockUuidField,
-                Factory.getInstance().CreateInInterface(
-                port.getGeneralInterface(),
-                port.getEventInterface()));
-        registry.RegisterRepository(this.ownerId.clockUuidField, port.getRepo());
-        AttemptInitBMC(registry, ds);
     }
 }
