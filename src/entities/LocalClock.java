@@ -8,6 +8,8 @@ import data.structs.TimeRepresentation;
 import data.types.DataValue;
 import data.types.Int32;
 import data.types.UInt32;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import timestamp.TimeStamp;
 
 /**
@@ -17,7 +19,7 @@ import timestamp.TimeStamp;
  */
 public class LocalClock {
 
-    long mOffSet = 0;
+    long mNanoOffSet = 0;
     long startTime = 0;
     TimeStamp tStamp;
     private boolean useTicks;
@@ -36,7 +38,7 @@ public class LocalClock {
      * @param nanos amount of nanoseconds to set off 
      */
     public void setOffset(long nanos) {
-        this.mOffSet = nanos / 1000L;
+        this.mNanoOffSet = nanos;
     }
 
     /**
@@ -44,25 +46,21 @@ public class LocalClock {
      * @return the amount of nano seconds the clock is offset
      */
     public long getOffset() {
-        return this.mOffSet * 1000L;
+        return this.mNanoOffSet;
     }
 
-    public long getTimeMillis() {
-        long time = System.currentTimeMillis();
+    public long getTimeNanos() {
+        long time = System.currentTimeMillis() * 1000000L;
         if (this.useTicks) {
-            time = this.startTime + tStamp.GetElapsedMillis() + this.mOffSet;
+            time = ((this.startTime + tStamp.GetElapsedMillis()) * 1000000L) + this.mNanoOffSet;
         }
 
         return time;
     }
 
     public TimeRepresentation getTime() {
-        long currTime = this.getTimeMillis();
-        long nanos = (currTime % 1000) * 1000;
-        long seconds = currTime / 1000;
-        TimeRepresentation time = new TimeRepresentation();
-        time.seconds = new UInt32(DataValue.ToData((int) seconds));
-        time.nanoseconds = new Int32(DataValue.ToData((int) nanos));
+        long currTime = this.getTimeNanos();
+        TimeRepresentation time = new TimeRepresentation(currTime);
 
         return time;
     }
@@ -72,7 +70,14 @@ public class LocalClock {
      * @return nanoseconds of accuracy
      */
     public static long GetAccuracy() {
-        return (1000L * 1000L * 1000L) / TimeStamp.GetFrequency();
+        try {
+            return (1000000000L) / TimeStamp.GetFrequency();
+        } catch (NoClassDefFoundError e) {
+            Logger.getGlobal().log(Level.WARNING, "Se asume que si no se tiene TimeStamp"
+                    + "es porque estamos en el servidor y no se ocupa.");
+            // 1000 milisegundos de precisión
+            return 1000000L;
+        }
     }
 
     public boolean IsHighResolution() {

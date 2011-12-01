@@ -36,7 +36,7 @@ public class MsgDelayReq extends DataStruct {
     public UInt16 localStepsRemoved = UInt16.Zero;
     public UInt8 localClockStratum = UInt8.Zero;
     public Octet[] localClockIdentifer = Octet.Array(Constants.PTP_CODE_STRING_LENGTH);
-    public UInt8 parentCommunicationTechnology;
+    public UInt8 parentCommunicationTechnology = UInt8.Zero;
     public Octet[] parentUuid = Octet.Array(Constants.PTP_UUID_LENGTH);
     public UInt16 parentPortField = UInt16.Zero;
     public Int16 estimatedMasterVariance = Int16.Zero;

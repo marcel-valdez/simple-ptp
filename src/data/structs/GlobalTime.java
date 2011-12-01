@@ -15,7 +15,7 @@ public final class GlobalTime extends DataStruct {
     public static final GlobalTime Empty = new GlobalTime();
     public TimeRepresentation localTime = new TimeRepresentation();
     public Int16 currentUtcOffset = Int16.Zero;
-    public Bool leap59;
-    public Bool leap61;
+    public Bool leap59 = Bool.False;
+    public Bool leap61 = Bool.False;
     public UInt16 epochNumber = UInt16.Zero;
 }

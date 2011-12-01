@@ -9,8 +9,10 @@ import data.structs.MsgDelayReq;
 import data.structs.MsgDelayResp;
 import data.structs.MsgSync;
 import data.structs.PortDataSet;
+import data.types.Octet;
 import entities.interfaces.IEventMsgHandler;
 import entities.interfaces.IInEventInterface;
+import entities.interfaces.IInInterface;
 import entities.interfaces.INetNodesRepository;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,10 +24,10 @@ import java.util.logging.Logger;
 public class EventInterface implements IEventInterface {
 
     final private ClockPort mOwner;
-    private IEventMsgHandler mHandler;
     final private PortDataSet portDataSet;
+    final private INetNodesRepository mRepo;
+    private IEventMsgHandler mHandler;
     private IInEventInterface mMasterClock;
-    private INetNodesRepository mRepo;
 
     public EventInterface(ClockPort owner, INetNodesRepository repo) {
         this.mOwner = owner;
@@ -42,6 +44,14 @@ public class EventInterface implements IEventInterface {
         this.mHandler = handler;
     }
 
+    /**
+     * Sets the master clock of this interface
+     * @param master the master clock
+     */
+    public void SetMaster(IInEventInterface master) {
+        this.mMasterClock = master;
+    }
+
     /** 
      * Envía el mensaje delay request por la red 
      * -- Comunicación síncrona remota
@@ -50,9 +60,19 @@ public class EventInterface implements IEventInterface {
     public MsgDelayResp OutDelayRequest(MsgDelayReq delayRequest) {
         /*/ El mensaje se envía al master-clock */
         try {
-            return mMasterClock.InDelayRequest(delayRequest);
+            if (this.mMasterClock != null) {
+                return mMasterClock.InDelayRequest(delayRequest);
+            } else {
+                Logger.getLogger(EventInterface.class.getName()).log(
+                        Level.WARNING,
+                        "El reloj maestro era nulo al intentar"
+                        + "enviarle el delayrequest");
+            }
         } catch (Exception e) {
-            Logger.getLogger(EventInterface.class.getName()).log(Level.WARNING, null, e);
+            Logger.getLogger(EventInterface.class.getName()).log(
+                    Level.WARNING,
+                    "Ocurrio un error al intentar enviar el"
+                    + "mensaje delayrequest al reloj maestro", e);
         }
 
         return MsgDelayResp.Empty;
@@ -65,15 +85,24 @@ public class EventInterface implements IEventInterface {
     @Override
     public void OutSync(MsgSync sync) {
         /** Debe enviar el sync al slave-clock */
-        for (IInEventInterface slave : mRepo.GetNodes()) {
+        for (IInInterface slave : mRepo.GetNodes()) {
             // Debería ser one-way (asíncrono)
-            if (slave != this.mMasterClock) {
-                try {
-                    slave.InSync(sync);
-                } catch (Exception e) {
-                    Logger.getLogger(EventInterface.class.getName()).log(Level.WARNING, null, e);
-                }
+            try {
+                slave.InSync(sync);
+            } catch (NullPointerException e) {
+                Logger.getLogger(EventInterface.class.getName()).log(
+                        Level.WARNING,
+                        "Uno de los relojes esclavos era nulo al intentar"
+                        + "\nenviarle el mensaje de sincronizacion, tal reloj"
+                        + "\nse eliminara del repositorio local.");
+                this.mRepo.UnregisterClock(slave);
+            } catch (Exception e) {
+                Logger.getLogger(EventInterface.class.getName()).log(Level.WARNING,
+                        "Uno de los relojes esclavos arrojó un error,"
+                        + "\nse eliminará del repositorio local", e);
+                this.mRepo.UnregisterClock(slave);
             }
+
         }
     }
 

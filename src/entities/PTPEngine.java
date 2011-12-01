@@ -15,6 +15,7 @@ import data.structs.PortDataSet;
 import data.structs.TimeRepresentation;
 import data.types.DataValue;
 import data.types.Int32;
+import data.types.Octet;
 import data.types.UInt16;
 import data.types.UInt32;
 import entities.enums.ManagementKey;
@@ -25,7 +26,6 @@ import entities.interfaces.IEventMsgHandler;
 import entities.interfaces.IGeneralMsgHandler;
 import entities.interfaces.IGlobalNodesRegistry;
 import entities.interfaces.IInInterface;
-import java.util.Arrays;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -37,6 +37,10 @@ import system.NotImplementedException;
  */
 public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable {
 
+    public static final String CHANGING_DELAY = "Changing delay to: {0} nanoseconds";
+    public static final String CHANGING_OFFSET = "Changing offset by: {0} nanoseconds";
+    private static final String ERROR_DEFINIR_EL_MASTER = "Hubo un error al intentar definir el master clock";
+    private static final String RECEIVED_CANDIDATE_MESSAGE = "Received a BMC Candidate message";
     final private static Random random = new Random(System.currentTimeMillis());
     final private ClockIdentity ownerId;
     final private OrdinaryClock owner;
@@ -56,12 +60,33 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
         this.ownerId = owner.ClockId;
         this.port = new ClockPort(this);
         this.clock = Factory.getInstance().CreateClock();
-        owner.currentDataSet = new CurrentDataSet();
+        this.Initialize();
+        this.thread = new Thread(this);
+        this.thread.start();
+    }
+
+    private void Initialize() {
+        /**
+         * Qué hacer al inicializar? Empezar el BMC y pasar a PRE_MASTER?
+         * Sí, entonces se requiere acceso al repositorio global.
+         */
+        this.owner.currentDataSet = new CurrentDataSet();
         OrdinaryClock.defaultDataSet.timeSource = this.clock.IsHighResolution() ? TimeSource.PTP : TimeSource.INTERNAL_OSCILLATOR;
-        Initialize();
-        Thread tStart = new Thread(this);
-        tStart.start();
-        this.thread = tStart;
+        this.SetState(PortState.INITIALIZING);
+        PortDataSet ds = port.getPortDataSet();
+        ds.portIdField = new UInt16((byte) random.nextInt(127), (byte) random.nextInt(127));
+        ds.portUuidField = this.ownerId.clockUuidField;
+        IGlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
+        Logger.getGlobal().log(Level.INFO, "Registering Clock");
+        registry.RegisterRepository(this.ownerId.clockUuidField, port.getRepo());
+        registry.RegisterClock(
+                this.ownerId.clockUuidField,
+                Factory.getInstance().CreateInInterface(
+                port.getGeneralInterface(),
+                port.getEventInterface()));
+        this.SetState(PortState.WAIT_PRE_MASTER);
+        this.port.SynchronizeRepo(registry);
+        AttemptInitBMC(ds);
     }
 
     private void AttemptInitBMC(PortDataSet ds) {
@@ -73,6 +98,21 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
         } else {
             SetState(PortState.WAIT_PRE_MASTER);
         }
+    }
+
+    private boolean IsState(PortState state) {
+        return this.port.getPortDataSet().portState.equals(state);
+    }
+
+    private boolean SetSlaveState(MsgManagement message) {
+        // Somos slave, ya lo sabemos
+        Octet[] masterUuid = message.payload.clockIdentity.clockUuidField;
+        boolean result = this.port.SetMaster(masterUuid);
+        if (result) {
+            SetState(PortState.SLAVE);
+        }
+
+        return result;
     }
 
     private void SetState(PortState state) {
@@ -88,15 +128,29 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
 
     private void ForwardMessage(MsgManagement message) {
         IInInterface neighbor = Factory.getInstance().GetGlobalNodesRegistry().GetNextClock(this.ownerId.clockUuidField);
-        neighbor.InAnnounce(message);
+        if (neighbor != null && !Octet.Compare(neighbor.GetPortDataSet().portUuidField, this.port.getPortDataSet().portUuidField)) {
+            neighbor.InAnnounce(message);
+        } else if (!IsState(PortState.MASTER)) { // Está entrando aquí sin ser el que inició el BMC
+            // me hago master, obviamente, soy el mejor (porque no hay ningún otro), empiezo a enviar el mensaje SET_MASTER
+            this.SetState(PortState.MASTER);
+            message.managementMessageKey = ManagementKey.BMC_SET_MASTER;
+            //this.ForwardMessage(message);
+            this.EndBMC();
+        }
     }
 
     private void ProcessCandidateMessage(MsgManagement message) {
+        Logger.getGlobal().log(Level.INFO, RECEIVED_CANDIDATE_MESSAGE);
         // if its me, then start sending the SET_MASTER message
-        if (Arrays.equals(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
+        if (Octet.Compare(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
+            /** 
+             * Bajo cualquier condición, si te llega tu propio mensaje para
+             * ser candidato de master, eres master.
+             */
             SetState(PortState.MASTER);
             message.managementMessageKey = ManagementKey.BMC_SET_MASTER;
             ForwardMessage(message);
+
         } else {
             // Compare the dataset
             int p1 = message.payload.defaultData.priority1.getValue();
@@ -118,22 +172,29 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
                 SetState(PortState.MASTER_VOTER);
                 ForwardMessage(message);
             } else {
-                // Ya dio la vuelta el mensaje, hay que enviar set master del
-                // candidato recibido
+                // So yo inicié el BMC, y me llevo un mensaje de Candidato
+                // de master, quiere decir que ya dio la vuelta, y
+                // ya se definió el master.
                 message.managementMessageKey = ManagementKey.BMC_SET_MASTER;
-                // Somos slave, ya lo sabemos :)
-                SetState(PortState.SLAVE);
-                ForwardMessage(message);
+                if (SetSlaveState(message)) {
+                    ForwardMessage(message);
+                } else {
+                    Logger.getGlobal().log(Level.SEVERE, ERROR_DEFINIR_EL_MASTER);
+                }
             }
         }
     }
 
     private void ProcessSetMasterMessage(MsgManagement message) {
+        Logger.getGlobal().log(Level.INFO, "Received a Set Master message");
         // Set the new master, if its me, then change the state, and stop sending the message
-        if (Arrays.equals(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
+        if (Octet.Compare(message.payload.clockIdentity.clockUuidField, this.ownerId.clockUuidField)) {
             SetState(PortState.MASTER);
         } else {
-            SetState(PortState.SLAVE);
+            if (!SetSlaveState(message)) {
+                Logger.getGlobal().log(Level.SEVERE, ERROR_DEFINIR_EL_MASTER);
+            } else {
+            }
         }
 
         if (!this.startedBMC) {
@@ -157,36 +218,22 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
     }
 
     private void UpdateTime(long offset, long delay) {
-        this.clock.setOffset(offset);
+        Logger.getGlobal().log(Level.INFO, CHANGING_OFFSET, offset);
+        Logger.getGlobal().log(Level.INFO, CHANGING_DELAY, delay);
+        long newOffSet = this.clock.getOffset() - offset;
+        Logger.getGlobal().log(Level.INFO, "Slave: Nuevo offset {0}", new Object[]{newOffSet});
+        this.clock.setOffset(newOffSet);
         this.owner.currentDataSet.offsetFromMaster.seconds = new UInt32(DataValue.ToData(offset / 1000000000L));
         this.owner.currentDataSet.offsetFromMaster.nanoseconds = new Int32(DataValue.ToData(offset % 1000000000L));
         this.owner.currentDataSet.oneWayDelay.seconds = new UInt32(DataValue.ToData(delay / 1000000000L));
         this.owner.currentDataSet.oneWayDelay.nanoseconds = new Int32(DataValue.ToData(delay % 1000000000L));
-    }
-
-    private void Initialize() {
-        /**
-         * Qué hacer al inicializar? Empezar el BMC y pasar a PRE_MASTER?
-         * Sí, entonces se requiere acceso al repositorio global.
-         */
-        this.SetState(PortState.INITIALIZING);
-        PortDataSet ds = port.getPortDataSet();
-        ds.portIdField = new UInt16((byte) random.nextInt(127), (byte) random.nextInt(127));
-        ds.portUuidField = this.ownerId.clockUuidField;
-        IGlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
-        registry.RegisterClock(
-                this.ownerId.clockUuidField,
-                Factory.getInstance().CreateInInterface(
-                port.getGeneralInterface(),
-                port.getEventInterface()));
-        registry.RegisterRepository(this.ownerId.clockUuidField, port.getRepo());
-        this.SetState(PortState.WAIT_PRE_MASTER);
-        AttemptInitBMC(ds);
+        TimeRepresentation time = this.clock.getTime();
+        Logger.getGlobal().log(Level.INFO, "Synced time to: {0} seconds : {1} nanoseconds", new Object[]{time.seconds.getValue(), time.nanoseconds.getValue()});
     }
 
     @Override
     public void ProcessSync(MsgSync message) {
-
+        Logger.getGlobal().log(Level.INFO, "Received a Sync message");
         PortDataSet ds = port.getPortDataSet();
         if (ds.portState.equals(PortState.MASTER)) {
             /**
@@ -197,36 +244,36 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
             /**
              * Sync itself
              */
-            long syncSentStamp = 0;
-            long syncRecvStamp = clock.getTimeMillis() * 1000L * 1000L;
+            long mtrSyncSentStamp = 0;
+            long slvSyncRecvStamp = clock.getTimeNanos();
 
-            syncSentStamp = message.originTimestamp.seconds.getValue() * 1000L * 1000L * 1000L;
-            syncSentStamp += message.originTimestamp.nanoseconds.getValue();
+            mtrSyncSentStamp = message.originTimestamp.toNanos();
+            Logger.getGlobal().log(Level.INFO, "Slave: recibido sync con {0} ns\n\t @ {1}", new Object[]{message.originTimestamp.toNanos(), slvSyncRecvStamp});
 
-            long delayReceivedStamp = 0;
-            long delaySentStamp = 0;
+            long mtrDelayRespStamp = 0;
+            long slvDelayReqStamp = 0;
 
             MsgDelayReq request = new MsgDelayReq();
-            TimeRepresentation time = clock.getTime();
-            request.originTimestamp.nanoseconds = time.nanoseconds;
-            request.originTimestamp.seconds = time.seconds;
+            TimeRepresentation delayReqTime = clock.getTime();
+            request.originTimestamp = delayReqTime;
+            slvDelayReqStamp = delayReqTime.toNanos();
+
             MsgDelayResp response = this.port.getEventInterface().OutDelayRequest(request);
+            mtrDelayRespStamp = response.delayReceiptTimestamp.toNanos();
+            Logger.getGlobal().log(Level.INFO, "Slave: envio delayreq @ {0} ns\nrecibo resp con {1}", new Object[]{slvDelayReqStamp, mtrDelayRespStamp});
+            long offset = ((slvSyncRecvStamp - mtrSyncSentStamp) - (mtrDelayRespStamp - slvDelayReqStamp)) / 2;
+            long delay = ((slvSyncRecvStamp - mtrSyncSentStamp) + (mtrDelayRespStamp - slvDelayReqStamp)) / 2;
 
-            delayReceivedStamp = response.delayReceiptTimestamp.seconds.getValue() * 1000L * 1000L * 1000L;
-            delayReceivedStamp += response.delayReceiptTimestamp.nanoseconds.getValue();
-            delaySentStamp = time.seconds.getValue() * 1000L * 1000L * 1000L;
-            delaySentStamp += time.nanoseconds.getValue();
-
-            long offset = ((syncRecvStamp - syncSentStamp) - (delayReceivedStamp - delaySentStamp)) / 2;
-            long delay = ((syncRecvStamp - syncSentStamp) + (delayReceivedStamp - delaySentStamp)) / 2;
             UpdateTime(offset, delay);
         }
     }
 
     @Override
     public MsgDelayResp ProcessDelayReq(MsgDelayReq message) {
+        Logger.getGlobal().log(Level.INFO, "Received a delay request message");
         MsgDelayResp response = new MsgDelayResp();
         response.delayReceiptTimestamp = this.clock.getTime();
+        Logger.getGlobal().log(Level.INFO, "Master: envio delayresp con {0} seg {1} ns", new Object[]{response.delayReceiptTimestamp.seconds.getValue(), response.delayReceiptTimestamp.nanoseconds.getValue()});
         return response;
     }
 
@@ -237,6 +284,7 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
 
     @Override
     public void ProcessAnnouncement(MsgManagement message) {
+        Logger.getGlobal().log(Level.INFO, "Received an announcement");
         if (message.managementMessageKey.equals(ManagementKey.BMC_CANDIDATE)) {
             ProcessCandidateMessage(message);
         } else if (message.managementMessageKey.equals(ManagementKey.BMC_SET_MASTER)) {
@@ -247,8 +295,13 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
     public void run() {
         /** Se usa while true, porque esta instancia sabrá cuando 
         morir, en base a los mensajes de Announce */
+        long lastPing = System.currentTimeMillis() - 5000;
         while (true) {
             // Sincroniza a los slaves
+            if (System.currentTimeMillis() - lastPing >= 5000) {
+                Factory.getInstance().GetGlobalNodesRegistry().Ping(this.ownerId.clockUuidField);
+                lastPing = System.currentTimeMillis();
+            }
 
             PortDataSet ds = port.getPortDataSet();
             if (ds.portState.equals(PortState.INITIALIZING)) {
@@ -262,10 +315,9 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
                  */
                 MsgSync sync = new MsgSync();
                 sync.originTimestamp = this.clock.getTime();
+                Logger.getGlobal().log(Level.INFO, "Master: syncronizando con {0} seg {1} ns", new Object[]{sync.originTimestamp.seconds.getValue(), sync.originTimestamp.nanoseconds.getValue()});
                 this.port.getEventInterface().OutSync(sync);
             } else if (ds.portState.equals(PortState.WAIT_PRE_MASTER)) {
-
-                IGlobalNodesRegistry registry = Factory.getInstance().GetGlobalNodesRegistry();
                 AttemptInitBMC(ds);
             } else if (ds.portState.equals(PortState.MASTER_VOTER)) {
                 /**
@@ -300,8 +352,11 @@ public class PTPEngine implements IEventMsgHandler, IGeneralMsgHandler, Runnable
                  * ???
                  */
             }
+
             try {
-                Thread.sleep(2000);
+                synchronized (this) {
+                    this.wait(2000);
+                }
             } catch (InterruptedException ex) {
                 Logger.getGlobal().log(Level.WARNING, ex.getMessage());
             }

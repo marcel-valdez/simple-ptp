@@ -48,4 +48,12 @@ public class Octet extends DataValue<Byte> {
         
         return result;
     }
+    
+    public static boolean Compare(Octet[] a, Octet[] b) {
+        for(int i = 0; i < a.length; i++) {
+            if(a[i].getValue() != b[i].getValue())
+                return false;
+        }
+        return true;
+    }
 }
