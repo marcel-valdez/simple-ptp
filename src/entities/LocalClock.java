@@ -25,10 +25,11 @@ public class LocalClock {
     private boolean useTicks;
 
     public LocalClock(boolean useTicks) {
-        tStamp = new TimeStamp();
+
         startTime = System.currentTimeMillis();
         this.useTicks = useTicks;
         if (useTicks) {
+            tStamp = new TimeStamp();
             tStamp.Start();
         }
     }
@@ -72,7 +73,7 @@ public class LocalClock {
     public static long GetAccuracy() {
         try {
             return (1000000000L) / TimeStamp.GetFrequency();
-        } catch (NoClassDefFoundError e) {
+        } catch (NoClassDefFoundError | java.lang.UnsatisfiedLinkError e) {
             Logger.getGlobal().log(Level.WARNING, "Se asume que si no se tiene TimeStamp"
                     + "es porque estamos en el servidor y no se ocupa.");
             // 1000 milisegundos de precisión
